@@ -44,11 +44,52 @@ client component; the two panels are server-rendered and the few interactive
 bits inside them (nav pills, burger menus, showcase dots) are wired by the
 same effect that owns the motion.
 
+## /get-card
+
+"Get a Card" leads to `/get-card`, a wallet gate on the app shell (sticky bar,
+centred column — no design canvas).
+
+It discovers wallets through **EIP-6963** and talks to them over EIP-1193
+directly; there is no wallet library in the dependency list, because the page
+makes four calls: `eth_accounts`, `eth_requestAccounts`, `eth_chainId` and
+`wallet_switchEthereumChain`. Wallets that never answer the EIP-6963
+announcement are picked up 400ms later from `window.ethereum`. The chosen
+wallet's rdns is remembered so a return visit reconnects silently — reading
+existing permission only, never prompting on a first visit.
+
+Once connected it shows the account, the wallet, and the network, with a
+**Switch to Robinhood Chain** button when the wallet is somewhere else
+(`wallet_addEthereumChain` if it has never seen the network).
+
+Two things the live site does that this page deliberately does not:
+
+- **No sign-in signature.** rwaspend.site signs a server nonce and gets a
+  session back. A signature with no server to verify it proves nothing, so the
+  page connects and says so instead of performing security theatre.
+- **No card issuing.** "Continue" is disabled and labelled with why. Wiring it
+  up means a card service, an issuing partner and a payment flow — none of
+  which exist here.
+
+The flow was verified against a stubbed EIP-1193 provider — discovery,
+connect, wrong-network warning, switch, disconnect, and rejection (code 4001 →
+"You cancelled the request in your wallet") — never against a real extension.
+
 ## Where the brand lives
 
 `src/lib/site.ts` — name, chain, settlement token, X account, CTA target.
 Plus `public/logo.png` and the app icons in `src/app/`. Nothing else hardcodes
 the name; the footer handle is derived from the X URL so the two cannot drift.
+
+The mark is built from flat artwork by `scripts/build-logo.mjs`:
+
+```bash
+node scripts/build-logo.mjs path/to/artwork.png
+```
+
+Give it any square PNG with the mark in black on white. It crops to the ink,
+turns the white away into transparency, and centres the result on the white
+rounded tile the site uses, writing `public/logo.png` and both app icons. PNG
+decode and encode are in the script, so the repo carries no image dependency.
 
 Env overrides are listed in `.env.example`. `NEXT_PUBLIC_MEDIA_BASE` moves the
 two clips (~35 MB together) to a CDN — worth doing before this takes traffic,
@@ -57,10 +98,10 @@ repo.
 
 ## Not in this repo
 
-`/get-card` and `/dashboard` — the wallet-gated card app — were out of scope
-for the rebrand, so every "Get a Card" points at a `/get-card` route that does
-not exist here yet. Set `NEXT_PUBLIC_CTA_HREF` to send them at the app
-wherever it lives, or port those routes in.
+`/dashboard` — cards, balances, transactions — and the API behind it: auth
+(nonce/verify/session), `/api/bins`, `/api/assets`, `/api/checkout/*`. The CTA
+target stays configurable through `NEXT_PUBLIC_CTA_HREF` if the card app lives
+somewhere else.
 
 ## Before this goes near a real domain
 
